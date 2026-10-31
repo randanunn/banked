@@ -550,13 +550,13 @@ function playerList({ scores = false, numbered = false } = {}) {
 }
 
 function diceHtml(roll) {
+  // Real-dice rolls only have a total, which the roll text already shows.
+  if (state.diceMode === 'manual') return '';
   const die = (n) =>
     n
       ? `<div class="die">${Array.from({ length: 9 }, (_, i) => `<span class="${PIPS[n].includes(i) ? 'pip' : ''}"></span>`).join('')}</div>`
       : '<div class="die placeholder"></div>';
-  // Real-dice rolls only know the total, so show that instead of faces.
-  const faces = roll && !roll.dice ? `<div class="die total">${roll.sum ?? '×2'}</div>` : die(roll?.dice[0]) + die(roll?.dice[1]);
-  return `<div class="dice ${animateDice ? 'rolling' : ''}">${faces}</div>`;
+  return `<div class="dice ${animateDice ? 'rolling' : ''}">${die(roll?.dice[0])}${die(roll?.dice[1])}</div>`;
 }
 
 function rollText(roll) {
