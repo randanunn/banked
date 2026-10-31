@@ -478,3 +478,40 @@ details summary {
   margin-top: 10px;
   font-size: 14px;
 }
+
+.hint-above {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+/* Tablets and laptops, e.g. a host screen in the middle of the table. */
+@media (min-width: 700px) {
+  main {
+    max-width: 680px;
+    gap: 18px;
+  }
+
+  .pot {
+    font-size: 120px;
+  }
+
+  .die {
+    width: 96px;
+    height: 96px;
+    padding: 14px;
+  }
+
+  .die span {
+    width: 16px;
+    height: 16px;
+  }
+
+  .die.total {
+    font-size: 52px;
+  }
+
+  .roll-text,
+  .turn-banner {
+    font-size: 24px;
+  }
+}

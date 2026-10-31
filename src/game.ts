@@ -85,6 +85,9 @@ export class Game {
   /** In turn order. */
   players: Player[] = [];
   hostId: string | null = null;
+  hostName: string | null = null;
+  /** False when the host runs the game from a shared screen without taking turns or banking. */
+  hostPlays = true;
   rounds = DEFAULT_ROUNDS;
   diceMode: DiceMode = 'virtual';
   round = 0;
@@ -116,11 +119,28 @@ export class Game {
     if (!name) throw new GameError('Enter a name');
     if (this.phase !== 'lobby') throw new GameError('A game is already in progress');
     if (this.players.length >= MAX_PLAYERS) throw new GameError(`The game is full (${MAX_PLAYERS} players max)`);
-    if (this.players.some((p) => p.name.toLowerCase() === name.toLowerCase())) {
-      throw new GameError('That name is taken');
-    }
+    const taken = [...this.players.map((p) => p.name), this.hostName].some((n) => n?.toLowerCase() === name.toLowerCase());
+    if (taken) throw new GameError('That name is taken');
     this.players.push({ id, name, score: 0, connected: true, bank: null });
-    this.hostId ??= id;
+    if (this.hostId === null) {
+      this.hostId = id;
+      this.hostName = name;
+    }
+  }
+
+  /** Lets the host either take part as a player or just run the game from a shared screen. */
+  setHostPlays(id: string, plays: unknown): void {
+    this.requireHost(id);
+    if (this.phase !== 'lobby') throw new GameError('This can only be changed before the game starts');
+    if (typeof plays !== 'boolean') throw new GameError('Unknown setting');
+    if (plays === this.hostPlays) return;
+    if (plays) {
+      if (this.players.length >= MAX_PLAYERS) throw new GameError(`The game is full (${MAX_PLAYERS} players max)`);
+      this.players.unshift({ id, name: this.hostName!, score: 0, connected: true, bank: null });
+    } else {
+      this.players = this.players.filter((p) => p.id !== id);
+    }
+    this.hostPlays = plays;
   }
 
   setConnected(id: string, connected: boolean): void {
@@ -234,6 +254,11 @@ export class Game {
   }
 
   leave(id: string): void {
+    if (id === this.hostId && !this.hostPlays) {
+      this.transferHost(0);
+      if (this.hostId === null) this.reset();
+      return;
+    }
     this.dropPlayer(id);
   }
 
@@ -270,7 +295,10 @@ export class Game {
     return {
       phase: this.phase,
       youId: me?.id ?? null,
+      youAreHost: viewerId !== null && viewerId === this.hostId,
       hostId: this.hostId,
+      hostName: this.hostName,
+      hostPlays: this.hostPlays,
       rounds: this.rounds,
       diceMode: this.diceMode,
       round: this.round,
@@ -320,15 +348,16 @@ export class Game {
     const index = this.players.findIndex((p) => p.id === id);
     if (index === -1) throw new GameError('That player is not in the game');
     this.players.splice(index, 1);
-
-    if (this.players.length === 0) {
-      Object.assign(this, new Game({ now: this.now, random: this.random }));
+    if (this.hostId === id) this.transferHost(index);
+    if (this.hostId === null) {
+      this.reset();
       return;
     }
-    // Keep the turn on whoever was next in line.
-    if (index < this.turnIndex) this.turnIndex--;
-    this.turnIndex %= this.players.length;
-    if (this.hostId === id) this.hostId = this.players[index % this.players.length].id;
+    if (this.players.length > 0) {
+      // Keep the turn on whoever was next in line.
+      if (index < this.turnIndex) this.turnIndex--;
+      this.turnIndex %= this.players.length;
+    }
 
     if (this.phase === 'lobby' || this.phase === 'gameover') return;
     if (this.players.length < MIN_PLAYERS) {
@@ -337,6 +366,18 @@ export class Game {
     } else if (this.phase === 'playing') {
       this.endRoundIfAllBanked();
     }
+  }
+
+  /** Hands hosting to the player at `index` in turn order (wrapping), or to nobody if there are no players. */
+  private transferHost(index: number): void {
+    const next = this.players.length > 0 ? this.players[index % this.players.length] : undefined;
+    this.hostId = next?.id ?? null;
+    this.hostName = next?.name ?? null;
+    this.hostPlays = true;
+  }
+
+  private reset(): void {
+    Object.assign(this, new Game({ now: this.now, random: this.random }));
   }
 
   private rollDie(): number {

@@ -144,6 +144,9 @@ function handle(client: Client, message: Record<string, unknown>): void {
     case 'settings':
       game.updateSettings(id, { rounds: message.rounds, diceMode: message.diceMode });
       break;
+    case 'hostPlays':
+      game.setHostPlays(id, message.plays);
+      break;
     case 'move':
       game.movePlayer(id, String(message.playerId), message.offset);
       break;
@@ -167,7 +170,7 @@ function handle(client: Client, message: Record<string, unknown>): void {
       game.removePlayer(id, String(message.playerId));
       break;
     case 'leave':
-      if (game.player(id)) game.leave(id);
+      if (game.player(id) || id === game.hostId) game.leave(id);
       for (const c of clients) {
         if (c.room === room && c.playerId === id) {
           c.room = null;

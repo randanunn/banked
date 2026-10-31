@@ -72,6 +72,63 @@ test('the host can reorder players in the lobby only', () => {
   assert.throws(() => game.movePlayer('a', 'b', -1), /before the game starts/);
 });
 
+test('the host can just host without playing', () => {
+  const game = new Game({ random: () => 0 });
+  game.join('h', 'Hal');
+  game.join('a', 'Ann');
+  assert.throws(() => game.setHostPlays('a', false), /Only the host/);
+  game.setHostPlays('h', false);
+  assert.deepEqual(
+    game.players.map((p) => p.id),
+    ['a'],
+  );
+  assert.equal(game.viewFor('h').youAreHost, true);
+  assert.equal(game.viewFor('h').youId, null);
+  assert.throws(() => game.join('x', 'hal'), /taken/); // the host's name stays reserved
+  assert.throws(() => game.start('h'), /at least 2/); // the host doesn't count as a player
+  game.join('b', 'Bob');
+  game.start('h');
+  assert.equal(game.currentPlayer!.id, 'a');
+  game.skipTurn('h');
+  assert.throws(() => game.bank('h'), /not in this game/);
+  assert.throws(() => game.setHostPlays('h', true), /before the game starts/);
+});
+
+test('the host can switch back to playing', () => {
+  const game = new Game();
+  game.join('h', 'Hal');
+  game.join('a', 'Ann');
+  game.setHostPlays('h', false);
+  game.setHostPlays('h', true);
+  assert.deepEqual(
+    game.players.map((p) => p.name),
+    ['Hal', 'Ann'],
+  );
+});
+
+test('when a non-playing host leaves, the first player becomes host', () => {
+  const game = new Game();
+  game.join('h', 'Hal');
+  game.join('a', 'Ann');
+  game.join('b', 'Bob');
+  game.setHostPlays('h', false);
+  game.leave('h');
+  assert.equal(game.hostId, 'a');
+  assert.equal(game.hostName, 'Ann');
+  assert.equal(game.hostPlays, true);
+});
+
+test('a non-playing host keeps the room when every player leaves', () => {
+  const game = new Game();
+  game.join('h', 'Hal');
+  game.join('a', 'Ann');
+  game.setHostPlays('h', false);
+  game.leave('a');
+  assert.equal(game.hostId, 'h');
+  game.leave('h');
+  assert.equal(game.hostId, null);
+});
+
 test('settings are locked once the game starts', () => {
   const { game } = setup(['a', 'b']);
   assert.throws(() => game.updateSettings('a', { diceMode: 'virtual' }), /before the game starts/);

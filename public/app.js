@@ -145,6 +145,9 @@ const actions = {
   start() {
     send({ type: 'start' });
   },
+  hostPlays(value) {
+    send({ type: 'hostPlays', plays: value === 'yes' });
+  },
   move(value) {
     const [offset, id] = value.split(/:(.*)/);
     send({ type: 'move', playerId: id, offset: Number(offset) });
@@ -253,10 +256,10 @@ function render() {
 
 const esc = (value) =>
   String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const isHost = () => state.youId !== null && state.youId === state.hostId;
+const isHost = () => state.youAreHost;
 const nameOf = (id) => state.players.find((p) => p.id === id)?.name ?? 'someone';
 const openAttr = (id) => (openDetails.has(id) ? 'open' : '');
-const waitingFor = (what) => `<p class="muted center">Waiting for ${esc(nameOf(state.hostId))} to ${what}…</p>`;
+const waitingFor = (what) => `<p class="muted center">Waiting for ${esc(state.hostName)} to ${what}…</p>`;
 
 const savedName = () => esc(localStorage.getItem(NAME_KEY) ?? '');
 const shareUrl = () => `${location.origin}${location.pathname}#${roomCode}`;
@@ -265,7 +268,7 @@ function view() {
   if (!heardFromServer) return '<p class="muted center">Connecting…</p>';
   const banner = online ? '' : '<div class="offline-bar">Reconnecting…</div>';
   if (!state) return banner + homeView();
-  if (!state.youId) return banner + (state.phase === 'lobby' ? joinView() : spectatorView());
+  if (!state.youId && !state.youAreHost) return banner + (state.phase === 'lobby' ? joinView() : spectatorView());
   const views = { lobby: lobbyView, playing: playingView, reveal: revealView, gameover: gameOverView };
   return banner + views[state.phase]();
 }
@@ -332,7 +335,12 @@ function lobbyView() {
           )
           .join('')}
       </div>
-      ${state.diceMode === 'manual' ? '<p class="muted">Everyone rolls real dice, and you enter each total.</p>' : ''}`
+      ${state.diceMode === 'manual' ? '<p class="muted">Everyone rolls real dice, and you enter each total.</p>' : ''}
+      <div class="segmented">
+        <button class="${state.hostPlays ? 'selected' : ''}" data-action="hostPlays" data-value="yes">🙋 I'm playing</button>
+        <button class="${state.hostPlays ? '' : 'selected'}" data-action="hostPlays" data-value="no">📺 Just hosting</button>
+      </div>
+      ${state.hostPlays ? '' : '<p class="muted">This screen runs the game (start, skip, next round, entering real dice) but doesn\'t take turns or bank.</p>'}`
     : `<p>${state.rounds} rounds · ${diceLabel[state.diceMode]}</p>`;
 
   return `
@@ -345,6 +353,7 @@ function lobbyView() {
     </section>
     <section class="panel">
       <h2>Turn order (${state.players.length}/${maxPlayers} players)</h2>
+      ${state.hostPlays ? '' : `<p class="muted hint-above">📺 ${isHost() ? "You're" : `${esc(state.hostName)} is`} hosting and not playing.</p>`}
       ${playerList({ numbered: true })}
       ${isHost() && state.players.length > 1 ? '<p class="muted hint">Use ▲ ▼ to match where everyone is sitting.</p>' : ''}
     </section>
@@ -397,7 +406,7 @@ function turnSection() {
           ${
             myTurn
               ? `<div class="turn-banner mine">Your turn! Roll the dice.</div>
-                 <p class="muted center">${esc(nameOf(state.hostId))} will enter your total.</p>`
+                 <p class="muted center">${esc(state.hostName)} will enter your total.</p>`
               : `<div class="turn-banner">${current}'s turn to roll</div>`
           }
         </section>`;
@@ -446,6 +455,7 @@ function manualPicker(coolingDown) {
 }
 
 function bankSection() {
+  if (!state.youId) return ''; // a host who isn't playing has nothing to bank
   if (state.yourBank !== null) return `<div class="banked-note">🤫 You banked ${state.yourBank}</div>`;
   const confirm = isConfirming('bank');
   return `
