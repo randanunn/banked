@@ -364,12 +364,13 @@ input[type='number'] {
 .picker {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
 .picker button {
-  padding: 12px 0;
-  font-size: 20px;
+  min-height: 96px;
+  padding: 0;
+  font-size: 30px;
 }
 
 .picker .bust-total {
@@ -378,7 +379,7 @@ input[type='number'] {
 }
 
 .picker .doubles {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .die.total {
