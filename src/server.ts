@@ -13,6 +13,8 @@ const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O, which look 
 const ROOM_CODE_LENGTH = 4;
 const MAX_ROOMS = 200;
 const ROOM_IDLE_MS = 2 * 60 * 60 * 1000;
+// Render sets RENDER_GIT_COMMIT; locally, every restart counts as a new build.
+const BUILD_ID = process.env.RENDER_GIT_COMMIT ?? `local-${Date.now()}`;
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const STATIC_FILES: Record<string, [file: string, contentType: string]> = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -41,9 +43,8 @@ const clients = new Set<Client>();
 const server = createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', 'http://localhost').pathname;
   if (path === '/version') {
-    // Render sets RENDER_GIT_COMMIT, which makes it easy to check which commit is live.
     res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
-    res.end(process.env.RENDER_GIT_COMMIT ?? 'local');
+    res.end(BUILD_ID);
     return;
   }
   const entry = STATIC_FILES[path];
@@ -104,6 +105,7 @@ function handle(client: Client, message: Record<string, unknown>): void {
   if (message.type === 'hello') {
     if (typeof message.playerId !== 'string' || !message.playerId) throw new GameError('Missing player id');
     client.playerId = message.playerId.slice(0, 64);
+    send(client, { type: 'build', id: BUILD_ID });
     const code = typeof message.room === 'string' ? message.room.trim().toUpperCase() : '';
     const room = rooms.get(code) ?? null;
     moveClient(client, room);

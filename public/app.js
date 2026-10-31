@@ -16,6 +16,7 @@ let reconnectTimer = null;
 let reconnectDelay = 500;
 let state = null;
 let heardFromServer = false;
+let buildId = null;
 let roomCode = location.hash.slice(1).toUpperCase() || null;
 let cooldownUntil = 0;
 let lastRollKey = '';
@@ -47,7 +48,8 @@ function connect() {
   };
   socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
-    if (message.type === 'state') onState(message);
+    if (message.type === 'build') onBuild(message.id);
+    else if (message.type === 'state') onState(message);
     else if (message.type === 'error') onError(message.message);
   };
   socket.onclose = () => {
@@ -96,6 +98,15 @@ function onState({ room, state: next, missingRoom }) {
   if (myTurn && prev?.currentPlayerId !== next.youId) navigator.vibrate?.(200);
 
   render();
+}
+
+/**
+ * An open page keeps running its old code when it reconnects to a newly deployed server,
+ * so reload to pick up the matching client. The room and player id survive the reload.
+ */
+function onBuild(id) {
+  if (buildId !== null && buildId !== id) location.reload();
+  buildId = id;
 }
 
 function onError(message) {
@@ -559,7 +570,7 @@ function rollText(roll) {
   const effect = {
     add: `+${roll.sum}${roll.doubles ? (roll.dice ? ' (doubles on a safe roll)' : ' (safe roll)') : ''}`,
     seventy: '<span class="effect-seventy">Safe 7! +70</span>',
-    double: '<span class="effect-double">Doubles! Pot doubled</span>',
+    double: `<span class="effect-double">${roll.dice ? 'Doubles! Pot doubled' : 'Pot doubled!'}</span>`,
     bust: '<span class="effect-bust">7, BUST!</span>',
   }[roll.effect];
   return `${who} rolled ${rolled} · ${effect}`;
