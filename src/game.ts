@@ -144,6 +144,18 @@ export class Game {
     }
   }
 
+  /** Moves a player one seat earlier (-1) or later (+1) in turn order. Host only, before the game starts. */
+  movePlayer(id: string, targetId: string, offset: unknown): void {
+    this.requireHost(id);
+    if (this.phase !== 'lobby') throw new GameError('Turn order can only be changed before the game starts');
+    if (offset !== -1 && offset !== 1) throw new GameError('Unknown move');
+    const from = this.players.findIndex((p) => p.id === targetId);
+    if (from === -1) throw new GameError('That player is not in the game');
+    const to = from + offset;
+    if (to < 0 || to >= this.players.length) return;
+    [this.players[from], this.players[to]] = [this.players[to], this.players[from]];
+  }
+
   start(id: string): void {
     this.requireHost(id);
     if (this.phase !== 'lobby') throw new GameError('The game has already started');

@@ -145,6 +145,10 @@ const actions = {
   start() {
     send({ type: 'start' });
   },
+  move(value) {
+    const [offset, id] = value.split(/:(.*)/);
+    send({ type: 'move', playerId: id, offset: Number(offset) });
+  },
   roll() {
     send({ type: 'roll', rollNumber: state.rolls.length + 1 });
   },
@@ -339,7 +343,11 @@ function lobbyView() {
       <p class="muted">Friends can tap <b>Join a friend's game</b> and enter this code, or open<br />${esc(shareUrl())}</p>
       ${navigator.share ? '<button data-action="share">Share invite link</button>' : ''}
     </section>
-    <section class="panel"><h2>Players (${state.players.length}/${maxPlayers})</h2>${playerList()}</section>
+    <section class="panel">
+      <h2>Turn order (${state.players.length}/${maxPlayers} players)</h2>
+      ${playerList({ numbered: true })}
+      ${isHost() && state.players.length > 1 ? '<p class="muted hint">Use ▲ ▼ to match where everyone is sitting.</p>' : ''}
+    </section>
     <section class="panel stack"><h2>Settings</h2>${settings}</section>
     ${
       isHost()
@@ -495,9 +503,10 @@ function resultPanels(result) {
     <section class="panel"><h2>Round ${result.round}: who banked</h2><ul class="players">${banks}</ul></section>`;
 }
 
-function playerList({ scores = false, sorted = false } = {}) {
+function playerList({ scores = false, sorted = false, numbered = false } = {}) {
   const players = sorted ? [...state.players].sort((a, b) => b.score - a.score) : state.players;
-  const items = players.map((p) => {
+  const reorder = numbered && isHost();
+  const items = players.map((p, i) => {
     const classes = [
       p.connected ? '' : 'offline',
       p.id === state.currentPlayerId ? 'turn' : '',
@@ -510,8 +519,13 @@ function playerList({ scores = false, sorted = false } = {}) {
              ${isConfirming(removeKey) ? 'Remove?' : '✕'}
            </button>`
         : '';
+    const moveButtons = reorder
+      ? `<button class="small" data-action="move" data-value="-1:${esc(p.id)}" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>▲</button>
+         <button class="small" data-action="move" data-value="1:${esc(p.id)}" aria-label="Move down" ${i === players.length - 1 ? 'disabled' : ''}>▼</button>`
+      : '';
     return `
       <li class="${classes}">
+        ${numbered ? `<span class="seat">${i + 1}</span>` : ''}
         ${p.id === state.hostId ? '<span title="Host">👑</span>' : ''}
         <span class="name">
           ${esc(p.name)}
@@ -519,6 +533,7 @@ function playerList({ scores = false, sorted = false } = {}) {
           ${p.connected ? '' : '<span class="tag">offline</span>'}
         </span>
         ${scores ? `<span class="score">${p.score}</span>` : ''}
+        ${moveButtons}
         ${removeButton}
       </li>`;
   });

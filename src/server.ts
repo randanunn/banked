@@ -40,6 +40,12 @@ const clients = new Set<Client>();
 
 const server = createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+  if (path === '/version') {
+    // Render sets RENDER_GIT_COMMIT, which makes it easy to check which commit is live.
+    res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
+    res.end(process.env.RENDER_GIT_COMMIT ?? 'local');
+    return;
+  }
   const entry = STATIC_FILES[path];
   if (!entry) {
     res.writeHead(404).end('Not found');
@@ -137,6 +143,9 @@ function handle(client: Client, message: Record<string, unknown>): void {
       break;
     case 'settings':
       game.updateSettings(id, { rounds: message.rounds, diceMode: message.diceMode });
+      break;
+    case 'move':
+      game.movePlayer(id, String(message.playerId), message.offset);
       break;
     case 'start':
       game.start(id);

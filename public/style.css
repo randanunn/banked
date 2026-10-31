@@ -466,3 +466,15 @@ details summary {
   text-align: center;
   font-weight: 700;
 }
+
+.seat {
+  min-width: 18px;
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 14px;
+}

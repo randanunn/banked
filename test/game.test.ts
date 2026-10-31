@@ -52,6 +52,26 @@ test('needs at least two players and rejects duplicate names and late joiners', 
   assert.doesNotThrow(() => game.join('a', 'Ann')); // reconnecting is fine
 });
 
+test('the host can reorder players in the lobby only', () => {
+  const game = new Game();
+  for (const id of ['a', 'b', 'c']) game.join(id, id);
+  assert.throws(() => game.movePlayer('b', 'c', -1), /Only the host/);
+  game.movePlayer('a', 'c', -1);
+  assert.deepEqual(
+    game.players.map((p) => p.id),
+    ['a', 'c', 'b'],
+  );
+  game.movePlayer('a', 'a', 1);
+  game.movePlayer('a', 'b', 1); // already last: no-op
+  assert.deepEqual(
+    game.players.map((p) => p.id),
+    ['c', 'a', 'b'],
+  );
+  assert.throws(() => game.movePlayer('a', 'b', 2), /Unknown move/);
+  game.start('a');
+  assert.throws(() => game.movePlayer('a', 'b', -1), /before the game starts/);
+});
+
 test('settings are locked once the game starts', () => {
   const { game } = setup(['a', 'b']);
   assert.throws(() => game.updateSettings('a', { diceMode: 'virtual' }), /before the game starts/);
