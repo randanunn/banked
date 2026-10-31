@@ -427,7 +427,8 @@ function manualPicker(coolingDown) {
   const safe = state.rolls.length < state.limits.safeRolls;
   const disabled = coolingDown ? 'disabled' : '';
   const totals = Array.from({ length: 11 }, (_, i) => i + 2)
-    .map((n) => `<button data-action="enterTotal" data-value="${n}" ${disabled}>${n}</button>`)
+    // Once the safe rolls are over, a 7 busts the round, so make it stand out.
+    .map((n) => `<button class="${n === 7 && !safe ? 'bust-total' : ''}" data-action="enterTotal" data-value="${n}" ${disabled}>${n}</button>`)
     .join('');
   const hint = coolingDown
     ? 'Get ready…'

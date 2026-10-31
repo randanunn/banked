@@ -372,6 +372,11 @@ input[type='number'] {
   font-size: 20px;
 }
 
+.picker .bust-total {
+  background: var(--danger);
+  color: #fff;
+}
+
 .picker .doubles {
   font-size: 15px;
 }
