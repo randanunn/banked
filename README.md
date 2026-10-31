@@ -30,7 +30,7 @@ Games live in memory on a single instance. Render's free tier sleeps after 15 mi
 - The round ends when everyone has banked or someone busts, and then all banks are revealed.
 - After the last round (20 by default), the highest total wins. Ties share the win.
 
-The host picks the number of rounds and virtual vs. real dice in the lobby. In real-dice mode, players roll real dice and the host enters each total, plus **Doubles** if both dice matched. Everyone still banks on their own phone. Only the host can start the game, reorder players, skip a turn, remove a player, or advance to the next round.
+The host picks the number of rounds and virtual vs. real dice in the lobby. In real-dice mode, players roll real dice and the host enters each one with a single tap: the total, or (from the 4th roll on) **Doubles**. Everyone still banks on their own phone. Only the host can start the game, reorder players, skip a turn, remove a player, or advance to the next round.
 
 The host can also choose **Just hosting** in the lobby. Then the host's screen (say, an iPad or laptop in the middle of the table) runs the game and shows the pot, dice, and scores, but doesn't take turns or bank. With real dice, that's where every roll gets entered.
 

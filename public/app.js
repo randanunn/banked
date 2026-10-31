@@ -20,7 +20,6 @@ let roomCode = location.hash.slice(1).toUpperCase() || null;
 let cooldownUntil = 0;
 let lastRollKey = '';
 let animateDice = false;
-let manualRoll = { sum: null, doubles: false };
 let confirming = null; // { key, until } for two-tap actions
 let toastTimer = null;
 const openDetails = new Set();
@@ -90,7 +89,6 @@ function onState({ room, state: next, missingRoom }) {
   const rollKey = `${next.round}:${next.rolls.length}`;
   if (rollKey !== lastRollKey) {
     animateDice = lastRollKey !== '' && next.rolls.length > 0;
-    manualRoll = { sum: null, doubles: false };
     lastRollKey = rollKey;
   }
 
@@ -155,20 +153,11 @@ const actions = {
   roll() {
     send({ type: 'roll', rollNumber: state.rolls.length + 1 });
   },
-  pickSum(value) {
-    const sum = Number(value);
-    // 2 and 12 can only be doubles; odd totals never are.
-    const keepDoubles = manualRoll.doubles && manualRoll.sum !== 2 && manualRoll.sum !== 12;
-    const doubles = sum === 2 || sum === 12 || (sum % 2 === 0 && keepDoubles);
-    manualRoll = { sum, doubles };
-    render();
+  enterTotal(value) {
+    send({ type: 'roll', sum: Number(value), rollNumber: state.rolls.length + 1 });
   },
-  toggleDoubles() {
-    manualRoll.doubles = !manualRoll.doubles;
-    render();
-  },
-  submitRoll() {
-    send({ type: 'roll', ...manualRoll, rollNumber: state.rolls.length + 1 });
+  enterDoubles() {
+    send({ type: 'roll', doubles: true, rollNumber: state.rolls.length + 1 });
   },
   bank() {
     withConfirm('bank', () => send({ type: 'bank' }));
@@ -433,25 +422,24 @@ function turnSection() {
     </section>`;
 }
 
+/** One tap enters the roll: a total, or (after the safe rolls) Doubles, where the total doesn't matter. */
 function manualPicker(coolingDown) {
-  const { sum, doubles } = manualRoll;
-  const sums = Array.from({ length: 11 }, (_, i) => i + 2)
-    .map(
-      (n) => `<button class="${sum === n ? 'selected' : ''}" data-action="pickSum" data-value="${n}">${n}</button>`,
-    )
+  const safe = state.rolls.length < state.limits.safeRolls;
+  const disabled = coolingDown ? 'disabled' : '';
+  const totals = Array.from({ length: 11 }, (_, i) => i + 2)
+    .map((n) => `<button data-action="enterTotal" data-value="${n}" ${disabled}>${n}</button>`)
     .join('');
-  // Doubles only make sense for even totals, and 2 and 12 are always doubles.
-  const doublesLocked = sum === null || sum % 2 === 1 || sum === 2 || sum === 12;
-  const label = coolingDown ? 'Get ready…' : sum ? `Submit ${sum}${doubles ? ' (doubles)' : ''}` : 'Pick your total';
+  const hint = coolingDown
+    ? 'Get ready…'
+    : safe
+      ? `Tap the total. Doubles just add for the first ${state.limits.safeRolls} rolls.`
+      : 'Tap the total, or Doubles to double the pot.';
   return `
-    <p class="muted center">Tap the total of the dice.</p>
+    <p class="muted center">${hint}</p>
     <div class="picker">
-      ${sums}
-      <button class="doubles ${doubles ? 'selected' : ''}" data-action="toggleDoubles" ${doublesLocked ? 'disabled' : ''}>
-        ${doubles ? '✓ ' : ''}Doubles
-      </button>
-    </div>
-    <button class="primary big" data-action="submitRoll" ${sum && !coolingDown ? '' : 'disabled'}>${label}</button>`;
+      ${totals}
+      <button class="doubles" data-action="enterDoubles" ${safe || coolingDown ? 'disabled' : ''}>Doubles</button>
+    </div>`;
 }
 
 function bankSection() {
@@ -556,13 +544,17 @@ function diceHtml(roll) {
       ? `<div class="die">${Array.from({ length: 9 }, (_, i) => `<span class="${PIPS[n].includes(i) ? 'pip' : ''}"></span>`).join('')}</div>`
       : '<div class="die placeholder"></div>';
   // Real-dice rolls only know the total, so show that instead of faces.
-  const faces = roll && !roll.dice ? `<div class="die total">${roll.sum}</div>` : die(roll?.dice[0]) + die(roll?.dice[1]);
+  const faces = roll && !roll.dice ? `<div class="die total">${roll.sum ?? '×2'}</div>` : die(roll?.dice[0]) + die(roll?.dice[1]);
   return `<div class="dice ${animateDice ? 'rolling' : ''}">${faces}</div>`;
 }
 
 function rollText(roll) {
   const who = roll.playerId === state.youId ? 'You' : esc(roll.playerName);
-  const rolled = roll.dice ? `${roll.dice[0]} + ${roll.dice[1]}` : `${roll.sum}${roll.doubles ? ' (doubles)' : ''}`;
+  const rolled = roll.dice
+    ? `${roll.dice[0]} + ${roll.dice[1]}`
+    : roll.sum === null
+      ? 'doubles'
+      : `${roll.sum}${roll.doubles ? ' (doubles)' : ''}`;
   const effect = {
     add: `+${roll.sum}${roll.doubles ? (roll.dice ? ' (doubles on a safe roll)' : ' (safe roll)') : ''}`,
     seventy: '<span class="effect-seventy">Safe 7! +70</span>',

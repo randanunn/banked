@@ -27,6 +27,7 @@ test('applyRoll: from the fourth roll, 7 busts and doubles double', () => {
   assert.deepEqual(applyRoll(50, 4, 7, false), { effect: 'bust', pot: 50 });
   assert.deepEqual(applyRoll(50, 4, 4, true), { effect: 'double', pot: 100 });
   assert.deepEqual(applyRoll(50, 4, 4, false), { effect: 'add', pot: 54 });
+  assert.deepEqual(applyRoll(50, 4, null, true), { effect: 'double', pot: 100 });
   assert.deepEqual(applyRoll(50, 9, 5, false), { effect: 'add', pot: 55 });
 });
 
@@ -173,6 +174,17 @@ test('real dice are entered as a total plus a doubles flag', () => {
   roll([1, 1]);
   game.roll('a', { sum: 2 }); // roll 4: 2 is doubles, so the pot doubles
   assert.equal(game.pot, 32);
+});
+
+test('after the safe rolls, real-dice doubles can be entered without a total', () => {
+  const { game, roll } = setup(['a', 'b']);
+  roll([2, 3]);
+  assert.throws(() => game.roll('a', { doubles: true }), /Tap the total/); // safe-roll doubles add their total
+  roll([2, 3]);
+  roll([2, 3]);
+  game.roll('a', { doubles: true });
+  assert.equal(game.pot, 30);
+  assert.deepEqual(game.rolls[3], { ...game.rolls[3], sum: null, doubles: true, effect: 'double' });
 });
 
 test('virtual dice are rolled by the server', () => {

@@ -25,7 +25,8 @@ export interface Player {
 export interface Roll {
   playerId: string;
   playerName: string;
-  sum: number;
+  /** Null when the host entered a real-dice roll as just "doubles" (after the safe rolls). */
+  sum: number | null;
   doubles: boolean;
   /** The individual dice for virtual rolls; null when a player entered a real-dice roll. */
   dice: Dice | null;
@@ -51,20 +52,27 @@ export class GameError extends Error {}
 export function applyRoll(
   pot: number,
   rollNumber: number,
-  sum: number,
+  sum: number | null,
   doubles: boolean,
 ): { effect: RollEffect; pot: number } {
-  if (rollNumber <= SAFE_ROLLS) {
-    return sum === 7 ? { effect: 'seventy', pot: pot + 70 } : { effect: 'add', pot: pot + sum };
-  }
-  if (sum === 7) return { effect: 'bust', pot };
-  if (doubles) return { effect: 'double', pot: pot * 2 };
+  if (doubles && rollNumber > SAFE_ROLLS) return { effect: 'double', pot: pot * 2 };
+  if (sum === null) throw new Error('A roll needs its total unless it doubles the pot');
+  if (sum === 7) return rollNumber <= SAFE_ROLLS ? { effect: 'seventy', pot: pot + 70 } : { effect: 'bust', pot };
   return { effect: 'add', pot: pot + sum };
 }
 
-/** Validates a real-dice roll entered as a total plus whether it was doubles. */
-function parseManualRoll(input: unknown): { sum: number; doubles: boolean } {
+/**
+ * Validates a real-dice roll: a total (2 and 12 count as doubles), or, after the safe
+ * rolls, just "doubles", since then the total doesn't matter.
+ */
+function parseManualRoll(input: unknown, rollNumber: number): { sum: number | null; doubles: boolean } {
   const { sum, doubles } = (input ?? {}) as { sum?: unknown; doubles?: unknown };
+  if (doubles === true && sum === undefined) {
+    if (rollNumber <= SAFE_ROLLS) {
+      throw new GameError(`Tap the total. Doubles only add their total in the first ${SAFE_ROLLS} rolls.`);
+    }
+    return { sum: null, doubles: true };
+  }
   if (!Number.isInteger(sum) || (sum as number) < 2 || (sum as number) > 12) {
     throw new GameError('Pick what your dice added up to (2 to 12)');
   }
@@ -205,10 +213,10 @@ export class Game {
     if (this.now() < this.nextRollAt) throw new GameError('Hang on, too fast!');
 
     let dice: Dice | null = null;
-    let sum: number;
+    let sum: number | null;
     let doubles: boolean;
     if (this.diceMode === 'manual') {
-      ({ sum, doubles } = parseManualRoll(manualRoll));
+      ({ sum, doubles } = parseManualRoll(manualRoll, this.rolls.length + 1));
     } else {
       dice = [this.rollDie(), this.rollDie()];
       sum = dice[0] + dice[1];

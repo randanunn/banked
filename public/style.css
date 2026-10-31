@@ -372,11 +372,6 @@ input[type='number'] {
   font-size: 20px;
 }
 
-.picker button.selected {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 .picker .doubles {
   font-size: 15px;
 }
