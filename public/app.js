@@ -429,7 +429,7 @@ function turnSection() {
   return `
     <section class="panel stack">
       <div class="turn-banner mine">Your turn!</div>
-      <button class="primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>${coolingDown ? 'Get ready…' : '🎲 Roll'}</button>
+      <button class="primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>🎲 Roll</button>
     </section>`;
 }
 
@@ -441,11 +441,9 @@ function manualPicker(coolingDown) {
     // Once the safe rolls are over, a 7 busts the round, so make it stand out.
     .map((n) => `<button class="${n === 7 && !safe ? 'bust-total' : ''}" data-action="enterTotal" data-value="${n}" ${disabled}>${n}</button>`)
     .join('');
-  const hint = coolingDown
-    ? 'Get ready…'
-    : safe
-      ? `Tap the total. Doubles just add for the first ${state.limits.safeRolls} rolls.`
-      : 'Tap the total, or Doubles to double the pot.';
+  const hint = safe
+    ? `Tap the total. Doubles just add for the first ${state.limits.safeRolls} rolls.`
+    : 'Tap the total, or Doubles to double the pot.';
   return `
     <p class="muted center">${hint}</p>
     <div class="picker">

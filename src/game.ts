@@ -10,7 +10,8 @@ export const MAX_PLAYERS = 20;
 export const DEFAULT_ROUNDS = 20;
 export const MAX_ROUNDS = 100;
 export const SAFE_ROLLS = 3;
-export const ROLL_COOLDOWN_MS = 2000;
+/** Just long enough to swallow an accidental double tap. */
+export const ROLL_COOLDOWN_MS = 200;
 export const MAX_NAME_LENGTH = 20;
 
 export interface Player {
