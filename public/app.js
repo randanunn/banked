@@ -468,7 +468,7 @@ function revealView() {
     <div class="row spread"><strong>Round ${result.round} of ${state.rounds}</strong><span class="badge">Round over</span></div>
     ${resultPanels(result)}
     <section class="panel"><h2>Scores</h2>${playerList({ scores: true })}</section>
-    ${isHost() ? '<button class="primary big" data-action="nextRound">Next round →</button>' : waitingFor('start the next round')}
+    ${isHost() ? `<button class="primary big" data-action="nextRound">Start round ${result.round + 1}</button>` : waitingFor(`start round ${result.round + 1}`)}
     ${rollLog()}
     ${leaveButton()}`;
 }
