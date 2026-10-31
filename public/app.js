@@ -314,7 +314,7 @@ function spectatorView() {
       <p class="muted">You can join when it's over. Keep this page open.</p>
     </section>
     <button class="link" data-action="back">← Back</button>
-    <section class="panel"><h2>Scores</h2>${playerList({ scores: true, sorted: true })}</section>`;
+    <section class="panel"><h2>Scores</h2>${playerList({ scores: true })}</section>`;
 }
 
 function lobbyView() {
@@ -467,7 +467,7 @@ function revealView() {
   return `
     <div class="row spread"><strong>Round ${result.round} of ${state.rounds}</strong><span class="badge">Round over</span></div>
     ${resultPanels(result)}
-    <section class="panel"><h2>Scores</h2>${playerList({ scores: true, sorted: true })}</section>
+    <section class="panel"><h2>Scores</h2>${playerList({ scores: true })}</section>
     ${isHost() ? '<button class="primary big" data-action="nextRound">Next round →</button>' : waitingFor('start the next round')}
     ${rollLog()}
     ${leaveButton()}`;
@@ -482,7 +482,7 @@ function gameOverView() {
       <div class="result-banner win">${headline}</div>
       ${state.winnerIds.includes(state.youId) ? "<p>🎉 That's you!</p>" : ''}
     </section>
-    <section class="panel"><h2>Final scores</h2>${playerList({ scores: true, sorted: true })}</section>
+    <section class="panel"><h2>Final scores</h2>${playerList({ scores: true })}</section>
     ${isHost() ? '<button class="primary big" data-action="playAgain">Play again</button>' : waitingFor('start a new game')}
     ${state.lastResult ? resultPanels(state.lastResult) : ''}
     ${leaveButton()}`;
@@ -511,8 +511,9 @@ function resultPanels(result) {
     <section class="panel"><h2>Round ${result.round}: who banked</h2><ul class="players">${banks}</ul></section>`;
 }
 
-function playerList({ scores = false, sorted = false, numbered = false } = {}) {
-  const players = sorted ? [...state.players].sort((a, b) => b.score - a.score) : state.players;
+/** Scoreboards are ranked by score (ties keep turn order); otherwise the list is the turn order. */
+function playerList({ scores = false, numbered = false } = {}) {
+  const players = scores ? [...state.players].sort((a, b) => b.score - a.score) : state.players;
   const reorder = numbered && isHost();
   const items = players.map((p, i) => {
     const classes = [
