@@ -146,7 +146,7 @@ const actions = {
     send({ type: 'start' });
   },
   roll() {
-    send({ type: 'roll' });
+    send({ type: 'roll', rollNumber: state.rolls.length + 1 });
   },
   pickSum(value) {
     const sum = Number(value);
@@ -161,7 +161,7 @@ const actions = {
     render();
   },
   submitRoll() {
-    send({ type: 'roll', ...manualRoll });
+    send({ type: 'roll', ...manualRoll, rollNumber: state.rolls.length + 1 });
   },
   bank() {
     withConfirm('bank', () => send({ type: 'bank' }));
@@ -328,7 +328,7 @@ function lobbyView() {
           )
           .join('')}
       </div>
-      ${state.diceMode === 'manual' ? '<p class="muted">Everyone rolls real dice and taps in their total.</p>' : ''}`
+      ${state.diceMode === 'manual' ? '<p class="muted">Everyone rolls real dice, and you enter each total.</p>' : ''}`
     : `<p>${state.rounds} rounds · ${diceLabel[state.diceMode]}</p>`;
 
   return `
@@ -377,19 +377,43 @@ function playingView() {
 
 function turnSection() {
   const current = esc(nameOf(state.currentPlayerId));
-  if (state.currentPlayerId !== state.youId) {
+  const myTurn = state.currentPlayerId === state.youId;
+  const coolingDown = Date.now() < cooldownUntil;
+  const skipButton = isHost() && !myTurn ? `<button data-action="skip">Skip ${current}'s turn</button>` : '';
+
+  // With real dice, the host enters every roll; everyone else just rolls.
+  if (state.diceMode === 'manual') {
+    if (!isHost()) {
+      return `
+        <section class="panel stack">
+          ${
+            myTurn
+              ? `<div class="turn-banner mine">Your turn! Roll the dice.</div>
+                 <p class="muted center">${esc(nameOf(state.hostId))} will enter your total.</p>`
+              : `<div class="turn-banner">${current}'s turn to roll</div>`
+          }
+        </section>`;
+    }
+    return `
+      <section class="panel stack">
+        <div class="turn-banner ${myTurn ? 'mine' : ''}">${myTurn ? 'Your turn!' : `Enter ${current}'s roll`}</div>
+        ${manualPicker(coolingDown)}
+        ${skipButton}
+      </section>`;
+  }
+
+  if (!myTurn) {
     return `
       <section class="panel stack">
         <div class="turn-banner">${current}'s turn to roll</div>
-        ${isHost() ? `<button data-action="skip">Skip ${current}'s turn</button>` : ''}
+        ${skipButton}
       </section>`;
   }
-  const coolingDown = Date.now() < cooldownUntil;
-  const control =
-    state.diceMode === 'manual'
-      ? manualPicker(coolingDown)
-      : `<button class="primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>${coolingDown ? 'Get ready…' : '🎲 Roll'}</button>`;
-  return `<section class="panel stack"><div class="turn-banner mine">Your turn!</div>${control}</section>`;
+  return `
+    <section class="panel stack">
+      <div class="turn-banner mine">Your turn!</div>
+      <button class="primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>${coolingDown ? 'Get ready…' : '🎲 Roll'}</button>
+    </section>`;
 }
 
 function manualPicker(coolingDown) {
@@ -403,7 +427,7 @@ function manualPicker(coolingDown) {
   const doublesLocked = sum === null || sum % 2 === 1 || sum === 2 || sum === 12;
   const label = coolingDown ? 'Get ready…' : sum ? `Submit ${sum}${doubles ? ' (doubles)' : ''}` : 'Pick your total';
   return `
-    <p class="muted center">Roll your real dice, then tap the total.</p>
+    <p class="muted center">Tap the total of the dice.</p>
     <div class="picker">
       ${sums}
       <button class="doubles ${doubles ? 'selected' : ''}" data-action="toggleDoubles" ${doublesLocked ? 'disabled' : ''}>

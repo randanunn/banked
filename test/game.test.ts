@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Game, GameError, applyRoll, ROLL_COOLDOWN_MS, type Dice } from '../src/game.ts';
 
-/** A manual-dice game with a controllable clock, players joined in order, starting with the first player. */
+/** A manual-dice game with a controllable clock, players joined in order, starting with the first player (the host). */
 function setup(names: string[], rounds = 20) {
   let time = 0;
   const game = new Game({ now: () => time, random: () => 0 });
@@ -10,7 +10,7 @@ function setup(names: string[], rounds = 20) {
   game.updateSettings(names[0], { rounds, diceMode: 'manual' });
   game.start(names[0]);
   const roll = (dice: Dice) => {
-    game.roll(game.currentPlayer!.id, { sum: dice[0] + dice[1], doubles: dice[0] === dice[1] });
+    game.roll(names[0], { sum: dice[0] + dice[1], doubles: dice[0] === dice[1] });
     time += ROLL_COOLDOWN_MS;
   };
   return { game, roll, tick: (ms: number) => (time += ms) };
@@ -57,28 +57,44 @@ test('settings are locked once the game starts', () => {
   assert.throws(() => game.updateSettings('a', { diceMode: 'virtual' }), /before the game starts/);
 });
 
-test('players must roll in turn and respect the cooldown', () => {
-  const { game, tick } = setup(['a', 'b']);
-  assert.throws(() => game.roll('b', { sum: 3 }), /not your turn/);
-  game.roll('a', { sum: 3 });
-  assert.throws(() => game.roll('b', { sum: 3 }), /too fast/);
+test('with virtual dice, players must roll in turn and respect the cooldown', () => {
+  let time = 0;
+  const game = new Game({ now: () => time, random: () => 0 });
+  game.join('a', 'Ann');
+  game.join('b', 'Bob');
+  game.start('a');
+  assert.throws(() => game.roll('b'), /not your turn/);
+  game.roll('a');
+  assert.throws(() => game.roll('b'), /too fast/);
+  time += ROLL_COOLDOWN_MS;
+  game.roll('b');
+  assert.equal(game.pot, 4);
+});
+
+test('with real dice, only the host enters rolls, for every player', () => {
+  const { game, tick } = setup(['a', 'b', 'c']);
+  assert.throws(() => game.roll('b', { sum: 3 }), /Only the host/);
+  assert.throws(() => game.roll('c', { sum: 3 }), /Only the host/);
+  game.roll('a', { sum: 3 }, 1);
+  assert.equal(game.rolls[0].playerId, 'a');
   tick(ROLL_COOLDOWN_MS);
-  game.roll('b', { sum: 3 });
-  assert.equal(game.pot, 6);
+  assert.throws(() => game.roll('b', { sum: 3 }), /Only the host/); // not even on their own turn
+  assert.throws(() => game.roll('a', { sum: 3 }, 1), /already entered/); // repeated submission
+  game.roll('a', { sum: 4 }, 2);
+  assert.equal(game.rolls[1].playerId, 'b');
 });
 
 test('real dice are entered as a total plus a doubles flag', () => {
   const { game, roll, tick } = setup(['a', 'b']);
-  const id = () => game.currentPlayer!.id;
-  assert.throws(() => game.roll(id(), { sum: 1 }), /2 to 12/);
-  assert.throws(() => game.roll(id(), { sum: 13 }), /2 to 12/);
-  assert.throws(() => game.roll(id(), { sum: 5, doubles: true }), /odd/);
-  game.roll(id(), { sum: 12 }); // 12 is always doubles
+  assert.throws(() => game.roll('a', { sum: 1 }), /2 to 12/);
+  assert.throws(() => game.roll('a', { sum: 13 }), /2 to 12/);
+  assert.throws(() => game.roll('a', { sum: 5, doubles: true }), /odd/);
+  game.roll('a', { sum: 12 }); // 12 is always doubles
   assert.deepEqual(game.rolls[0], { ...game.rolls[0], sum: 12, doubles: true, dice: null });
   tick(ROLL_COOLDOWN_MS);
   roll([1, 1]);
   roll([1, 1]);
-  game.roll(id(), { sum: 2 }); // roll 4: 2 is doubles, so the pot doubles
+  game.roll('a', { sum: 2 }); // roll 4: 2 is doubles, so the pot doubles
   assert.equal(game.pot, 32);
 });
 

@@ -154,10 +154,22 @@ export class Game {
     this.startRound();
   }
 
-  roll(id: string, manualRoll?: unknown): void {
+  /**
+   * Rolls for the current player. With real dice, the host enters everyone's rolls.
+   * `rollNumber` (if given) must be the roll being entered, so a repeated submission
+   * isn't counted twice.
+   */
+  roll(id: string, manualRoll?: unknown, rollNumber?: unknown): void {
     if (this.phase !== 'playing') throw new GameError('Nobody is rolling right now');
     const roller = this.currentPlayer!;
-    if (roller.id !== id) throw new GameError("It's not your turn");
+    if (this.diceMode === 'manual') {
+      if (id !== this.hostId) throw new GameError('Only the host enters rolls');
+    } else if (roller.id !== id) {
+      throw new GameError("It's not your turn");
+    }
+    if (rollNumber !== undefined && rollNumber !== this.rolls.length + 1) {
+      throw new GameError('That roll was already entered');
+    }
     if (this.now() < this.nextRollAt) throw new GameError('Hang on, too fast!');
 
     let dice: Dice | null = null;

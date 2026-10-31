@@ -142,7 +142,7 @@ function handle(client: Client, message: Record<string, unknown>): void {
       game.start(id);
       break;
     case 'roll':
-      game.roll(id, { sum: message.sum, doubles: message.doubles });
+      game.roll(id, { sum: message.sum, doubles: message.doubles }, message.rollNumber);
       break;
     case 'bank':
       // Banks are secret: unless it ended the round, only the banker hears about it.
