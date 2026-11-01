@@ -28,7 +28,7 @@ Games live in memory on a single instance. Render's free tier sleeps after 15 mi
 - After that, doubles **double** the pot, and a 7 is a **bust**: the round ends and anyone who hasn't banked gets nothing.
 - Tap **Bank** at any time to lock in the current pot. Banking is secret and final. You still take your turns rolling.
 - The round ends when everyone has banked or someone busts, and then all banks are revealed.
-- After the last round (20 by default), the highest total wins. Ties share the win.
+- After the last round (20 by default), the highest total wins. Ties share the win. You can also play solo to chase a high score.
 
 The host picks the number of rounds and virtual vs. real dice in the lobby. In real-dice mode, players roll real dice and the host enters each one with a single tap: the total, or (from the 4th roll on) **Doubles**. Everyone still banks on their own phone. Only the host can start the game, reorder players, skip a turn, remove a player, or advance to the next round.
 

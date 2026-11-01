@@ -5,7 +5,8 @@ export type Phase = 'lobby' | 'playing' | 'reveal' | 'gameover';
 export type Dice = [number, number];
 export type RollEffect = 'add' | 'seventy' | 'double' | 'bust';
 
-export const MIN_PLAYERS = 2;
+/** One is enough: a solo game is handy for testing and for chasing a high score. */
+export const MIN_PLAYERS = 1;
 export const MAX_PLAYERS = 20;
 export const DEFAULT_ROUNDS = 20;
 export const MAX_ROUNDS = 100;
@@ -188,7 +189,9 @@ export class Game {
   start(id: string): void {
     this.requireHost(id);
     if (this.phase !== 'lobby') throw new GameError('The game has already started');
-    if (this.players.length < MIN_PLAYERS) throw new GameError(`Need at least ${MIN_PLAYERS} players`);
+    if (this.players.length < MIN_PLAYERS) {
+      throw new GameError(`Need at least ${MIN_PLAYERS} player${MIN_PLAYERS === 1 ? '' : 's'}`);
+    }
     for (const p of this.players) p.score = 0;
     this.round = 1;
     this.turnIndex = this.random(this.players.length);

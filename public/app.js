@@ -361,7 +361,7 @@ function lobbyView() {
     ${
       isHost()
         ? `<button class="primary big" data-action="start" ${enough ? '' : 'disabled'}>Start game</button>
-           ${enough ? '' : `<p class="muted center">Need at least ${minPlayers} players.</p>`}`
+           ${enough ? '' : `<p class="muted center">Need at least ${minPlayers} player${minPlayers === 1 ? '' : 's'}.</p>`}`
         : waitingFor('start the game')
     }
     ${rulesPanel()}
@@ -474,12 +474,19 @@ function revealView() {
 
 function gameOverView() {
   const winners = state.winnerIds.map((id) => esc(nameOf(id)));
-  const headline = winners.length > 1 ? `🏆 Tie! ${winners.join(' & ')}` : `🏆 ${winners[0]} wins!`;
+  const solo = state.players.length === 1;
+  const headline = solo
+    ? `🎯 ${winners[0]} scored ${state.players[0].score}!`
+    : winners.length > 1
+      ? `🏆 Tie! ${winners.join(' & ')}`
+      : winners.length === 1
+        ? `🏆 ${winners[0]} wins!`
+        : 'Game over';
   return `
     <h1>BANKED</h1>
     <section class="panel table">
       <div class="result-banner win">${headline}</div>
-      ${state.winnerIds.includes(state.youId) ? "<p>🎉 That's you!</p>" : ''}
+      ${!solo && state.winnerIds.includes(state.youId) ? "<p>🎉 That's you!</p>" : ''}
     </section>
     <section class="panel"><h2>Final scores</h2>${playerList({ scores: true })}</section>
     ${isHost() ? '<button class="primary big" data-action="playAgain">Play again</button>' : waitingFor('start a new game')}

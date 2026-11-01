@@ -42,10 +42,9 @@ test('first player to join is host and only the host can start', () => {
   assert.equal(game.phase, 'playing');
 });
 
-test('needs at least two players and rejects duplicate names and late joiners', () => {
+test('rejects duplicate names and late joiners', () => {
   const game = new Game();
   game.join('a', 'Ann');
-  assert.throws(() => game.start('a'), /at least 2/);
   assert.throws(() => game.join('b', 'ann'), /taken/);
   game.join('b', 'Bob');
   game.start('a');
@@ -73,9 +72,31 @@ test('the host can reorder players in the lobby only', () => {
   assert.throws(() => game.movePlayer('a', 'b', -1), /before the game starts/);
 });
 
+test('a single player can play alone', () => {
+  const { game, roll } = setup(['a'], 2);
+  roll([3, 4]); // 70
+  roll([5, 5]); // 80
+  roll([1, 2]); // 83
+  roll([2, 2]); // 166: doubles double
+  assert.equal(game.currentPlayer!.id, 'a');
+  assert.equal(game.bank('a'), true); // banking ends the round
+  assert.equal(game.players[0].score, 166);
+  game.nextRound('a');
+  roll([1, 2]);
+  roll([1, 2]);
+  roll([1, 2]);
+  roll([3, 4]); // bust
+  assert.equal(game.phase, 'gameover');
+  assert.equal(game.players[0].score, 166);
+  assert.deepEqual(game.winnerIds(), ['a']);
+});
+
 test('the host can just host without playing', () => {
   const game = new Game({ random: () => 0 });
   game.join('h', 'Hal');
+  game.setHostPlays('h', false);
+  assert.throws(() => game.start('h'), /at least 1 player/); // the host doesn't count as a player
+  game.setHostPlays('h', true);
   game.join('a', 'Ann');
   assert.throws(() => game.setHostPlays('a', false), /Only the host/);
   game.setHostPlays('h', false);
@@ -86,7 +107,6 @@ test('the host can just host without playing', () => {
   assert.equal(game.viewFor('h').youAreHost, true);
   assert.equal(game.viewFor('h').youId, null);
   assert.throws(() => game.join('x', 'hal'), /taken/); // the host's name stays reserved
-  assert.throws(() => game.start('h'), /at least 2/); // the host doesn't count as a player
   game.join('b', 'Bob');
   game.start('h');
   assert.equal(game.currentPlayer!.id, 'a');
@@ -318,11 +338,22 @@ test('when the host leaves, host passes to the next player in turn order', () =>
   assert.equal(game.hostId, 'b');
 });
 
-test('dropping below two players ends the game', () => {
+test('the game carries on with one player left', () => {
   const { game } = setup(['a', 'b']);
   game.leave('b');
+  assert.equal(game.phase, 'playing');
+  assert.equal(game.currentPlayer!.id, 'a');
+});
+
+test('the game ends if every player leaves a non-playing host', () => {
+  const game = new Game({ random: () => 0 });
+  game.join('h', 'Hal');
+  game.join('a', 'Ann');
+  game.setHostPlays('h', false);
+  game.start('h');
+  game.removePlayer('h', 'a');
   assert.equal(game.phase, 'gameover');
-  assert.deepEqual(game.winnerIds(), ['a']);
+  assert.deepEqual(game.winnerIds(), []);
 });
 
 test('everyone leaving resets to an empty lobby', () => {
