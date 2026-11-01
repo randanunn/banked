@@ -392,44 +392,43 @@ function playingView() {
     ${leaveButton()}`;
 }
 
+/**
+ * Every variant keeps the same shape for a given screen (a one-line banner plus a fixed
+ * action row), so the Bank button below never moves when the turn changes.
+ */
 function turnSection() {
-  const current = esc(nameOf(state.currentPlayerId));
+  const current = `<span class="who">${esc(nameOf(state.currentPlayerId))}</span>`;
   const myTurn = state.currentPlayerId === state.youId;
   const coolingDown = Date.now() < cooldownUntil;
-  const skipButton = isHost() && !myTurn ? `<button data-action="skip">Skip ${current}'s turn</button>` : '';
+  const banner = (text) => `<div class="turn-banner ${myTurn ? 'mine' : ''}">${text}</div>`;
+  const theirTurn = `${current}<span>'s turn to roll</span>`;
+  // An invisible stand-in keeps the row's height when there's no button to show.
+  const skipButton = (size) =>
+    isHost() && !myTurn
+      ? `<button class="turn-action ${size}" data-action="skip">Skip ${esc(nameOf(state.currentPlayerId))}'s turn</button>`
+      : `<button class="turn-action ${size} invisible" disabled tabindex="-1" aria-hidden="true">Skip</button>`;
 
   // With real dice, the host enters every roll; everyone else just rolls.
   if (state.diceMode === 'manual') {
     if (!isHost()) {
       return `
         <section class="panel stack">
-          ${
-            myTurn
-              ? `<div class="turn-banner mine">Your turn! Roll the dice.</div>
-                 <p class="muted center">${esc(state.hostName)} will enter your total.</p>`
-              : `<div class="turn-banner">${current}'s turn to roll</div>`
-          }
+          ${banner(myTurn ? 'Your turn! Roll the dice.' : theirTurn)}
+          <p class="muted center">${myTurn ? `${esc(state.hostName)} will enter your total.` : '&nbsp;'}</p>
         </section>`;
     }
     return `
       <section class="panel stack">
-        <div class="turn-banner ${myTurn ? 'mine' : ''}">${myTurn ? 'Your turn!' : `Enter ${current}'s roll`}</div>
+        ${banner(myTurn ? 'Your turn!' : `<span>Enter&nbsp;</span>${current}<span>'s roll</span>`)}
         ${manualPicker(coolingDown)}
-        ${skipButton}
+        ${skipButton('')}
       </section>`;
   }
 
-  if (!myTurn) {
-    return `
-      <section class="panel stack">
-        <div class="turn-banner">${current}'s turn to roll</div>
-        ${skipButton}
-      </section>`;
-  }
   return `
     <section class="panel stack">
-      <div class="turn-banner mine">Your turn!</div>
-      <button class="primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>🎲 Roll</button>
+      ${banner(myTurn ? 'Your turn!' : theirTurn)}
+      ${myTurn ? `<button class="turn-action primary big" data-action="roll" ${coolingDown ? 'disabled' : ''}>🎲 Roll</button>` : skipButton('big')}
     </section>`;
 }
 
@@ -445,7 +444,7 @@ function manualPicker(coolingDown) {
     ? `Tap the total. Doubles just add for the first ${state.limits.safeRolls} rolls.`
     : 'Tap the total, or Doubles to double the pot.';
   return `
-    <p class="muted center">${hint}</p>
+    <p class="muted center picker-hint">${hint}</p>
     <div class="picker">
       ${totals}
       <button class="doubles" data-action="enterDoubles" ${safe || coolingDown ? 'disabled' : ''}>Doubles</button>
