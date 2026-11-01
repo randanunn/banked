@@ -11,8 +11,10 @@ export const MAX_PLAYERS = 20;
 export const DEFAULT_ROUNDS = 20;
 export const MAX_ROUNDS = 100;
 export const SAFE_ROLLS = 3;
-/** Just long enough to swallow an accidental double tap. */
-export const ROLL_COOLDOWN_MS = 200;
+/** With virtual dice, the pause between rolls that gives players time to bank. */
+export const VIRTUAL_ROLL_COOLDOWN_MS = 1000;
+/** With real dice, the physical roll sets the pace, so this just swallows an accidental double tap. */
+export const MANUAL_ROLL_COOLDOWN_MS = 200;
 export const MAX_NAME_LENGTH = 20;
 
 export interface Player {
@@ -240,7 +242,7 @@ export class Game {
     this.advanceTurn();
 
     if (result.effect === 'bust') this.endRound(roller.name);
-    else this.nextRollAt = this.now() + ROLL_COOLDOWN_MS;
+    else this.nextRollAt = this.now() + (this.diceMode === 'manual' ? MANUAL_ROLL_COOLDOWN_MS : VIRTUAL_ROLL_COOLDOWN_MS);
   }
 
   /** Returns true if this bank ended the round (everyone has now banked). */

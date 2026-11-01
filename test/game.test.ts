@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, GameError, applyRoll, ROLL_COOLDOWN_MS, type Dice } from '../src/game.ts';
+import { Game, GameError, applyRoll, MANUAL_ROLL_COOLDOWN_MS, VIRTUAL_ROLL_COOLDOWN_MS, type Dice } from '../src/game.ts';
 
 /** A manual-dice game with a controllable clock, players joined in order, starting with the first player (the host). */
 function setup(names: string[], rounds = 20) {
@@ -11,7 +11,7 @@ function setup(names: string[], rounds = 20) {
   game.start(names[0]);
   const roll = (dice: Dice) => {
     game.roll(names[0], { sum: dice[0] + dice[1], doubles: dice[0] === dice[1] });
-    time += ROLL_COOLDOWN_MS;
+    time += MANUAL_ROLL_COOLDOWN_MS;
   };
   return { game, roll, tick: (ms: number) => (time += ms) };
 }
@@ -163,10 +163,20 @@ test('with virtual dice, players must roll in turn and respect the cooldown', ()
   game.start('a');
   assert.throws(() => game.roll('b'), /not your turn/);
   game.roll('a');
+  time += VIRTUAL_ROLL_COOLDOWN_MS - 1;
   assert.throws(() => game.roll('b'), /too fast/);
-  time += ROLL_COOLDOWN_MS;
+  time += 1;
   game.roll('b');
   assert.equal(game.pot, 4);
+});
+
+test('with real dice, the pause between rolls is much shorter', () => {
+  const { game, tick } = setup(['a', 'b']);
+  game.roll('a', { sum: 3 });
+  assert.throws(() => game.roll('a', { sum: 3 }), /too fast/);
+  tick(MANUAL_ROLL_COOLDOWN_MS);
+  game.roll('a', { sum: 3 });
+  assert.equal(game.pot, 6);
 });
 
 test('with real dice, only the host enters rolls, for every player', () => {
@@ -175,7 +185,7 @@ test('with real dice, only the host enters rolls, for every player', () => {
   assert.throws(() => game.roll('c', { sum: 3 }), /Only the host/);
   game.roll('a', { sum: 3 }, 1);
   assert.equal(game.rolls[0].playerId, 'a');
-  tick(ROLL_COOLDOWN_MS);
+  tick(MANUAL_ROLL_COOLDOWN_MS);
   assert.throws(() => game.roll('b', { sum: 3 }), /Only the host/); // not even on their own turn
   assert.throws(() => game.roll('a', { sum: 3 }, 1), /already entered/); // repeated submission
   game.roll('a', { sum: 4 }, 2);
@@ -189,7 +199,7 @@ test('real dice are entered as a total plus a doubles flag', () => {
   assert.throws(() => game.roll('a', { sum: 5, doubles: true }), /odd/);
   game.roll('a', { sum: 12 }); // 12 is always doubles
   assert.deepEqual(game.rolls[0], { ...game.rolls[0], sum: 12, doubles: true, dice: null });
-  tick(ROLL_COOLDOWN_MS);
+  tick(MANUAL_ROLL_COOLDOWN_MS);
   roll([1, 1]);
   roll([1, 1]);
   game.roll('a', { sum: 2 }); // roll 4: 2 is doubles, so the pot doubles
